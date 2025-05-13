@@ -20,7 +20,7 @@ public class PagamentoService {
     @Autowired
     private ModelMapper modelMapper;
 
-    public Page<PagamentoDto> obteTodos(Pageable paginacao){
+    public Page<PagamentoDto> obterTodos(Pageable paginacao){
         return repository.findAll(paginacao)
                 .map(p -> modelMapper.map(p, PagamentoDto.class));
     }
