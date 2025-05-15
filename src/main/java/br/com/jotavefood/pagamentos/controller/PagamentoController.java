@@ -16,7 +16,7 @@ import java.net.URI;
 
 @RestController
 @RequestMapping("/pagamentos")
-public class pagamentoController {
+public class PagamentoController {
 
     @Autowired
     private PagamentoService service;

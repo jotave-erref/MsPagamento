@@ -5,6 +5,8 @@ import br.com.jotavefood.pagamentos.model.Pagamento;
 import br.com.jotavefood.pagamentos.model.Status;
 import br.com.jotavefood.pagamentos.repository.PagamentoRepository;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,38 +15,67 @@ import org.modelmapper.ModelMapper;
 
 
 @Service
+@Slf4j
 public class PagamentoService {
     @Autowired
     private PagamentoRepository repository;
 
-    @Autowired
-    private ModelMapper modelMapper;
 
     public Page<PagamentoDto> obterTodos(Pageable paginacao){
         return repository.findAll(paginacao)
-                .map(p -> modelMapper.map(p, PagamentoDto.class));
+                .map(PagamentoDto::fromEntity);
     }
 
     public PagamentoDto obterPorId(Long id){
-        Pagamento pagamento = repository.findById(id)
+        return repository.findById(id).map(PagamentoDto::fromEntity)
                 .orElseThrow(() -> new EntityNotFoundException());
-        return modelMapper.map(pagamento, PagamentoDto.class);
     }
 
-    public PagamentoDto criarPagamento(PagamentoDto dto){
-        var pagamento = modelMapper.map(dto, Pagamento.class);
+    public PagamentoDto criarPagamento(PagamentoDto dto) {
+        log.info("Criando pagamento para DTO: {}", dto);
+
+        var pagamento = new Pagamento();
+        pagamento.setValor(dto.valor());
+        pagamento.setNome(dto.nome());
+        pagamento.setNumero(dto.numero());
+        pagamento.setExpiracao(dto.expiracao());
+        pagamento.setCodigo(dto.codigo());
+        pagamento.setPedidoId(dto.pedidoId());
+        pagamento.setFormaDePagamentoId(dto.formaDePagamentoId());
         pagamento.setStatus(Status.CRIADO);
-        repository.save(pagamento);
 
-        return modelMapper.map(pagamento, PagamentoDto.class);
+        log.info("Salvando pagamento: {}", pagamento);
+
+        pagamento = repository.save(pagamento);
+
+        return new PagamentoDto(
+                pagamento.getId(),
+                pagamento.getValor(),
+                pagamento.getNome(),
+                pagamento.getNumero(),
+                pagamento.getExpiracao(),
+                pagamento.getCodigo(),
+                pagamento.getStatus(),
+                pagamento.getPedidoId(),
+                pagamento.getFormaDePagamentoId()
+        );
     }
 
+    @Transactional
     public PagamentoDto atualizarPagamento(Long id, PagamentoDto dto){
-        Pagamento pagamento = modelMapper.map(dto, Pagamento.class);
-        pagamento.setId(id);
+        Pagamento pagamento = repository.findById(id).orElseThrow(() -> new EntityNotFoundException());
 
-        repository.save(pagamento); //Se atentar se o pagamento será atualizado sem atribuir a uma variável.
-        return modelMapper.map(pagamento, PagamentoDto.class);
+        pagamento.setValor(dto.valor());
+        pagamento.setNome(dto.nome());
+        pagamento.setNumero(dto.numero());
+        pagamento.setExpiracao(dto.expiracao());
+        pagamento.setCodigo(dto.codigo());
+        pagamento.setPedidoId(dto.pedidoId());
+        pagamento.setFormaDePagamentoId(dto.formaDePagamentoId());
+
+        pagamento = repository.save(pagamento);
+
+        return PagamentoDto.fromEntity(pagamento);
     }
 
     public void excluirPagamento(Long id){
